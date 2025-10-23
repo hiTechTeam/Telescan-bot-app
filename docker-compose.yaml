@@ -1,0 +1,16 @@
+services:
+  telescan-bot-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    env_file:
+      - .env
+    networks:
+      - telescan_network
+
+networks:
+  telescan_network:
+    driver: bridge
+    external: true
