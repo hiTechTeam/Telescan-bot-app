@@ -1,6 +1,6 @@
 import logging
 from src.app.routers import router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command
 from aiogram.types import Message
 from src.core.bots import bot
 from src.core.scripts import generate_code
@@ -10,7 +10,7 @@ from src.core.db.models import User
 log = logging.getLogger(__name__)
 
 
-@router.message(CommandStart())
+@router.message(Command(commands=["start", "code"]))
 async def cmd_start(message: Message):
     tg_id = message.from_user.id  # type: ignore
     tg_username = message.from_user.username  # type: ignore
