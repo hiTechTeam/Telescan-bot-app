@@ -2,6 +2,10 @@ import logging
 from src.core.bots import bot, dp
 from src.app.routers.users import router
 from src.core.log import conf_logging
+from beanie import init_beanie
+from src.core.db import mongo_client
+from src.core.db.models import User
+
 
 __all__ = ["app"]
 
@@ -9,6 +13,7 @@ log = logging.getLogger(__name__)
 
 
 async def app():
+    await init_beanie(database=mongo_client["telescan_db"], document_models=[User])
     conf_logging(level=logging.INFO)
     dp.include_router(router)
     try:
