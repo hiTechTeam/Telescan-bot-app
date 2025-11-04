@@ -12,6 +12,11 @@ log = logging.getLogger(__name__)
 
 @router.message(Command(commands=["start", "code"]))
 async def cmd_start(message: Message):
+    """
+    Processing the /start command.
+    Extracts user data and returns a code.
+    """
+
     tg_id = message.from_user.id  # type: ignore
     tg_username = message.from_user.username  # type: ignore
 
@@ -33,3 +38,11 @@ async def cmd_start(message: Message):
     await User.insert(user)
 
     await message.answer(f"<b><code>{code}</code></b>", parse_mode="HTML")
+
+
+@router.message(Command(commands=["new_code"]))
+async def get_new_code(message: Message):
+    """
+    Updating user code.
+    Previous code will be deleted.
+    """
