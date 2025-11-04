@@ -5,6 +5,7 @@ dependencies = [
   "dotenv>=0.9.9",
   "pydantic-settings>=2.11.0",
   "pymongo>=4.15.3",
+  "pytest-asyncio>=1.2.0",
 ]
 description = "Add your description here"
 name = "telescan-bot-app"
