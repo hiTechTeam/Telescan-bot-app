@@ -15,7 +15,7 @@ __all__ = ["settings"]
 class Settings(BaseSettings):
     """Main application settings."""
 
-    mongo_client_name = "telescan_db"
+    mongo_client_name: str = "telescan_db"
 
 
 settings = Settings()
