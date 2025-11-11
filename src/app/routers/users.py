@@ -18,14 +18,17 @@ async def cmd_start(message: Message):
     """
 
     tg_id = message.from_user.id  # type: ignore
+    tg_name = message.from_user.first_name  # type: ignore
     tg_username = message.from_user.username  # type: ignore
 
     photos = await bot.get_user_profile_photos(tg_id, limit=1)
     photo_file_id = photos.photos[0][0].file_id if photos.total_count > 0 else None
 
     user_data = await User.find_one(User.tg_id == tg_id)
+    msg_text = "You're code:"
 
     if user_data:
+        await message.answer(msg_text)
         await message.answer(f"<b><code>{user_data.code}</code></b>", parse_mode="HTML")
         return
 
@@ -34,15 +37,45 @@ async def cmd_start(message: Message):
         if not await User.find_one(User.code == code):
             break
 
-    user = User(tg_id=tg_id, tg_username=tg_username, code=code)
+    code_text = f"<b><code>{code}</code></b>"
+
+    user = User(
+        tg_id=tg_id,
+        tg_name=tg_name,
+        tg_username=tg_username,
+        code=code,
+    )
     await User.insert(user)
 
-    await message.answer(f"<b><code>{code}</code></b>", parse_mode="HTML")
+    await message.answer(msg_text)
+    await message.answer(code_text, parse_mode="HTML")
 
 
-@router.message(Command(commands=["new_code"]))
-async def get_new_code(message: Message):
+@router.message(Command(commands=["update_code"]))
+async def update_code(message: Message):
     """
     Updating user code.
     Previous code will be deleted.
     """
+
+    tg_id = message.from_user.id  # type: ignore
+    user_data = await User.find_one(User.tg_id == tg_id)
+
+    is_updated = False
+
+    while True:
+        code = await generate_code()
+        if not await User.find_one(User.code == code):
+            break
+
+    msg_text = "Code was updated:"
+    code_text = f"<b><code>{code}</code></b>"
+
+    if user_data:
+        user_data.code = code
+        await user_data.save()
+        is_updated = True
+
+    if is_updated:
+        await message.answer(msg_text)
+        await message.answer(code_text, parse_mode="HTML")
