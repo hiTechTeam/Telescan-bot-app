@@ -34,8 +34,9 @@ async def cmd_start(message: Message):
         return
 
     while True:
-        code: str = hashlib.sha256((await generate_code()).encode()).hexdigest()
-        if not await User.find_one(User.code == code):
+        code: str = await generate_code()
+        hashed_code: str = hashlib.sha256(code.encode()).hexdigest()
+        if not await User.find_one(User.code == hashed_code):
             break
 
     code_text = f"<b><code>{code}</code></b>"
