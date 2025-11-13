@@ -45,7 +45,7 @@ async def cmd_start(message: Message):
         tg_id=tg_id,
         tg_name=tg_name,
         tg_username=tg_username,
-        code=code,
+        code=hashed_code,
     )
     await User.insert(user)
 
@@ -75,7 +75,7 @@ async def update_code(message: Message):
     code_text = f"<b><code>{code}</code></b>"
 
     if user_data:
-        user_data.code = code
+        user_data.code = hashed_code
         await user_data.save()
         is_updated = True
 
