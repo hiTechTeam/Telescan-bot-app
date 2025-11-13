@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from src.app.routers import router
 from aiogram.filters import Command
@@ -33,7 +34,7 @@ async def cmd_start(message: Message):
         return
 
     while True:
-        code = await generate_code()
+        code: str = hashlib.sha256((await generate_code()).encode()).hexdigest()
         if not await User.find_one(User.code == code):
             break
 
