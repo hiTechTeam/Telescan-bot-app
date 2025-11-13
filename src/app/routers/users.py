@@ -66,8 +66,9 @@ async def update_code(message: Message):
     is_updated = False
 
     while True:
-        code = await generate_code()
-        if not await User.find_one(User.code == code):
+        code: str = await generate_code()
+        hashed_code: str = hashlib.sha256(code.encode()).hexdigest()
+        if not await User.find_one(User.code == hashed_code):
             break
 
     msg_text = "Code was updated:"
