@@ -26,11 +26,13 @@ async def cmd_start(message: Message):
     photo_file_id = photos.photos[0][0].file_id if photos.total_count > 0 else None
 
     user_data = await User.find_one(User.tg_id == tg_id)
-    msg_text = "You're code:"
 
     if user_data:
-        await message.answer(msg_text)
-        await message.answer(f"<b><code>{user_data.code}</code></b>", parse_mode="HTML")
+        await message.answer(
+            "The service does not store your code in clear form.\n"
+            "It was previously sent to you.\n"
+            "Try creating new code!\t/update_code"
+        )
         return
 
     while True:
@@ -39,7 +41,11 @@ async def cmd_start(message: Message):
         if not await User.find_one(User.code == hashed_code):
             break
 
-    code_text = f"<b><code>{code}</code></b>"
+    code_text = (
+        "Remember or write down your code, as the service does not store your code in clear text!\n\n"
+        "You're code:\n"
+        f"<b><code>{code}</code></b>"
+    )
 
     user = User(
         tg_id=tg_id,
@@ -49,7 +55,6 @@ async def cmd_start(message: Message):
     )
     await User.insert(user)
 
-    await message.answer(msg_text)
     await message.answer(code_text, parse_mode="HTML")
 
 
@@ -71,8 +76,7 @@ async def update_code(message: Message):
         if not await User.find_one(User.code == hashed_code):
             break
 
-    msg_text = "Code was updated:"
-    code_text = f"<b><code>{code}</code></b>"
+    code_text = f"Code was updated:\n<b><code>{code}</code></b>"
 
     if user_data:
         user_data.code = hashed_code
@@ -80,5 +84,4 @@ async def update_code(message: Message):
         is_updated = True
 
     if is_updated:
-        await message.answer(msg_text)
         await message.answer(code_text, parse_mode="HTML")

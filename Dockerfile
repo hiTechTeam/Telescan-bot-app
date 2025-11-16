@@ -12,4 +12,4 @@ COPY . .
 
 RUN uv sync --frozen
 
-CMD ["make", "run"]
+CMD ["make", "run_polling"]
