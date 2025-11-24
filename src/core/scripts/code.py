@@ -5,11 +5,8 @@ __all__ = ["generate_code"]
 
 LETTERS = string.ascii_uppercase
 DIGITS = string.digits
+ALL_CHARS = DIGITS + LETTERS
 
 
 async def generate_code() -> str:
-    return (
-        secrets.choice(LETTERS)
-        + "".join(secrets.choice(DIGITS) for _ in range(4))
-        + "".join(secrets.choice(LETTERS) for _ in range(3))
-    )
+    return "".join(secrets.choice(ALL_CHARS) for _ in range(8))
