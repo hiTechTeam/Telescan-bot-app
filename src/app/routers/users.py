@@ -66,6 +66,12 @@ async def update_code(message: Message):
     """
 
     tg_id = message.from_user.id  # type: ignore
+    tg_name = message.from_user.first_name  # type: ignore
+    tg_username = message.from_user.username  # type: ignore
+
+    photos = await bot.get_user_profile_photos(tg_id, limit=1)
+    photo_file_id = photos.photos[0][0].file_id if photos.total_count > 0 else None
+
     user_data = await User.find_one(User.tg_id == tg_id)
 
     is_updated = False
@@ -79,6 +85,8 @@ async def update_code(message: Message):
     code_text = f"Code was updated:\n<b><code>{code}</code></b>"
 
     if user_data:
+        user_data.tg_name = tg_name
+        user_data.tg_username = tg_username
         user_data.code = hashed_code
         await user_data.save()
         is_updated = True
