@@ -2,8 +2,12 @@
 
 # -- Imports
 
+import os
 from pydantic_settings import BaseSettings
+from src.core.s3 import S3Client
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # -- Exports
 
@@ -12,10 +16,31 @@ __all__ = ["settings"]
 # --
 
 
+S3AccessKey: str = os.getenv("TelescanS3AccessKey")  # type: ignore
+S3SecretKey: str = os.getenv("TelescanS3SecretKey")  # type: ignore
+S3EndpointURL_telescan_photos: str = "https://s3.ru-7.storage.selcloud.ru"
+S3PublicURL_telescan_photos: str = (
+    "https://b16a45ef-34c8-400e-8e9f-c71d081ad546.selstorage.ru"
+)
+S3BucketName: str = "profile-photos-telescan"
+
+# "https://b16a45ef-34c8-400e-8e9f-c71d081ad546.selstorage.ru"
+
+
 class Settings(BaseSettings):
     """Main application settings."""
 
     mongo_client_name: str = "telescan_db"
+    s3_client = S3Client(
+        access_key=S3AccessKey,
+        secret_key=S3SecretKey,
+        endpoint_url=S3EndpointURL_telescan_photos,
+        public_base_url=S3PublicURL_telescan_photos,
+        bucket_name=S3BucketName,
+    )
+
+    class Config:
+        ignored_types = (S3Client,)
 
 
 settings = Settings()

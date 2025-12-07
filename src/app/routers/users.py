@@ -6,6 +6,7 @@ from aiogram.types import Message
 from src.core.bots import bot
 from src.core.scripts import generate_code
 from src.core.db.models import User
+from src.core.conf import settings as s
 
 
 log = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ async def cmd_start(message: Message):
     tg_username = message.from_user.username  # type: ignore
 
     photos = await bot.get_user_profile_photos(tg_id, limit=1)
-    photo_file_id = photos.photos[0][0].file_id if photos.total_count > 0 else None
+    photo_file_id = photos.photos[0][-1].file_id if photos.total_count > 0 else None
 
     user_data = await User.find_one(User.tg_id == tg_id)
 
@@ -47,11 +48,21 @@ async def cmd_start(message: Message):
         f"<b><code>{code}</code></b>"
     )
 
+    photo_url = None
+    if photo_file_id:
+        object_name = f"{tg_id}.jpg"
+        photo_url = await s.s3_client.upload_telegram_photo(
+            bot=bot,
+            file_id=photo_file_id,
+            object_name=object_name,
+        )
+
     user = User(
         tg_id=tg_id,
         tg_name=tg_name,
         tg_username=tg_username,
         code=hashed_code,
+        photo_s3_link=photo_url,
     )
     await User.insert(user)
 
@@ -68,9 +79,6 @@ async def update_code(message: Message):
     tg_id = message.from_user.id  # type: ignore
     tg_name = message.from_user.first_name  # type: ignore
     tg_username = message.from_user.username  # type: ignore
-
-    photos = await bot.get_user_profile_photos(tg_id, limit=1)
-    photo_file_id = photos.photos[0][0].file_id if photos.total_count > 0 else None
 
     user_data = await User.find_one(User.tg_id == tg_id)
 
