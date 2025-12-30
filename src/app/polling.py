@@ -1,3 +1,5 @@
+# Polling for development
+
 import logging
 from src.core.bots import bot, dp
 from src.app.routers.users import router
