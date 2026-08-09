@@ -2,6 +2,7 @@
 dependencies = [
   "aiobotocore>=2.26.0",
   "aiogram>=3.22.0",
+  "aiohttp-socks>=0.11.0",
   "beanie>=2.0.0",
   "dotenv>=0.9.9",
   "pydantic-settings>=2.11.0",
