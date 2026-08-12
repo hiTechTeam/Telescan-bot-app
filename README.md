@@ -24,7 +24,7 @@ WEBHOOK_BASE_URL=
 WEBHOOK_SECRET_TOKEN=
 ```
 
-`TELEGRAM_PROXY_URL` is optional. The webhook variables are needed only for webhook mode.
+`TELEGRAM_PROXY_URL` is required by the current bot configuration. The webhook variables are needed only for webhook mode.
 
 ```sh
 uv sync
@@ -41,3 +41,5 @@ make bot-up
 ## Links
 
 [Project documentation](https://github.com/hiTechTeam/Telescan-info) · [Developer](https://github.com/r66cha)
+
+Licensed under the [MIT License](LICENSE).
