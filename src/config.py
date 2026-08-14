@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     bot_service_secret: str = Field(
         default="development-service-secret-change-me", min_length=32
     )
-    api_timeout_seconds: float = Field(default=8, gt=0, le=30)
+    api_timeout_seconds: float = Field(default=15, gt=0, le=30)
 
     internal_host: str = "0.0.0.0"
     internal_port: int = 8080

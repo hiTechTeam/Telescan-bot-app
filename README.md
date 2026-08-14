@@ -36,7 +36,9 @@ Polling mode also starts the internal aiohttp endpoint on `INTERNAL_HOST` and
 make run_wh
 ```
 
-The Docker service joins the external `telescan_network` network:
+The Docker service joins the external `telescan_network` network. Its internal
+HTTP port is exposed only to containers on that network and is not published on
+the host:
 
 ```sh
 docker network create telescan_network
@@ -51,7 +53,7 @@ make bot-up
 | `TELEGRAM_PROXY_URL` | Optional Telegram proxy |
 | `API_BASE_URL` | Internal origin of `Telescan-api` |
 | `BOT_SERVICE_SECRET` | Shared service credential; must match the API |
-| `API_TIMEOUT_SECONDS` | Timeout for bot-to-API calls |
+| `API_TIMEOUT_SECONDS` | Timeout for bot-to-API calls (15 seconds by default) |
 | `INTERNAL_HOST`, `INTERNAL_PORT` | Bind address for API-to-bot notifications |
 | `WEBHOOK_BASE_URL`, `WEBHOOK_PATH` | Public webhook URL and path |
 | `WEBHOOK_SECRET_TOKEN` | Telegram webhook verification secret |
