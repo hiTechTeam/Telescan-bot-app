@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 import aiohttp
@@ -17,7 +18,7 @@ class TelescanAPIClient:
         self._secret = service_secret
         self._timeout = aiohttp.ClientTimeout(total=timeout)
 
-    async def _request(self, method: str, path: str, **kwargs):
+    async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = dict(kwargs.pop("headers", {}))
         headers["Authorization"] = f"Bearer {self._secret}"
         try:
@@ -53,7 +54,9 @@ class TelescanAPIClient:
                 filename="telegram-profile.jpg",
                 content_type="image/jpeg",
             )
-        payload = await self._request("POST", "/internal/v1/link-codes", data=form)
+        payload: dict[str, Any] = await self._request(
+            "POST", "/internal/v1/link-codes", data=form
+        )
         return IssuedCode(
             code=payload["code"],
             expires_at=_datetime(payload["expiresAt"]),
@@ -69,7 +72,9 @@ class TelescanAPIClient:
         )
 
     async def pending_confirmations(self) -> list[PendingConfirmation]:
-        payload = await self._request("GET", "/internal/v1/confirmations/pending")
+        payload: list[dict[str, Any]] = await self._request(
+            "GET", "/internal/v1/confirmations/pending"
+        )
         return [
             PendingConfirmation(
                 confirmation_id=UUID(item["confirmationId"]),
@@ -83,7 +88,7 @@ class TelescanAPIClient:
     async def decide_confirmation(
         self, confirmation_id: UUID, telegram_id: int, decision: str
     ) -> ConfirmationDecision:
-        payload = await self._request(
+        payload: dict[str, Any] = await self._request(
             "POST",
             f"/internal/v1/confirmations/{confirmation_id}/decision",
             json={"telegramId": telegram_id, "decision": decision},

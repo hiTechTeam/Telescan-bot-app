@@ -56,7 +56,9 @@ def build_router(link_codes, confirmations) -> Router:
         except APIUnavailable:
             await callback.answer("API временно недоступен", show_alert=True)
         except APIRejected:
-            await callback.answer("Запрос уже завершён или недействителен", show_alert=True)
+            await callback.answer(
+                "Запрос уже завершён или недействителен", show_alert=True
+            )
 
     @router.callback_query(F.data.startswith("confirm:"))
     async def confirm(callback: CallbackQuery) -> None:

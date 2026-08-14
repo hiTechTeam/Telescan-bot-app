@@ -9,20 +9,22 @@ def create_webhook_app(runtime: Runtime) -> web.Application:
     settings = runtime.settings
     if not settings.webhook_base_url or not settings.webhook_secret_token:
         raise RuntimeError("Webhook settings are required")
+    webhook_base_url = settings.webhook_base_url
+    webhook_secret_token = settings.webhook_secret_token
     app = web.Application(client_max_size=2 * 1024 * 1024)
     add_internal_routes(app, runtime)
     SimpleRequestHandler(
         dispatcher=runtime.dispatcher,
         bot=runtime.bot,
-        secret_token=settings.webhook_secret_token,
+        secret_token=webhook_secret_token,
         handle_in_background=False,
     ).register(app, path=settings.webhook_path)
 
     async def startup(_: web.Application) -> None:
         await runtime.confirmations.restore()
         await runtime.bot.set_webhook(
-            f"{settings.webhook_base_url.rstrip('/')}{settings.webhook_path}",
-            secret_token=settings.webhook_secret_token,
+            f"{webhook_base_url.rstrip('/')}{settings.webhook_path}",
+            secret_token=webhook_secret_token,
         )
 
     async def cleanup(_: web.Application) -> None:

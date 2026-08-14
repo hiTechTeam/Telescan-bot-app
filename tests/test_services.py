@@ -2,6 +2,7 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -26,10 +27,14 @@ async def test_link_code_service_uses_api_without_database() -> None:
     )
     api = SimpleNamespace(
         issue_link_code=AsyncMock(
-            return_value=IssuedCode("ABCDEFGH", datetime.now(UTC) + timedelta(minutes=5))
+            return_value=IssuedCode(
+                "ABCDEFGH", datetime.now(UTC) + timedelta(minutes=5)
+            )
         )
     )
-    result = await LinkCodeService(bot, api).issue(123, "Ada", "ada")
+    result = await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(
+        123, "Ada", "ada"
+    )
 
     assert result.code == "ABCDEFGH"
     api.issue_link_code.assert_awaited_once_with(
@@ -59,13 +64,11 @@ async def test_confirmation_deletes_buttons_and_sends_separate_result(
             return_value=ConfirmationDecision(confirmation_id, decision, 123, 77)
         ),
     )
-    service = ConfirmationService(bot, api)
+    service = ConfirmationService(cast(Any, bot), cast(Any, api))
     await service.send_confirmation(
         confirmation_id, 123, datetime.now(UTC) + timedelta(minutes=5)
     )
-    status = await service.process_decision(
-        confirmation_id, 123, 123, 77, decision
-    )
+    status = await service.process_decision(confirmation_id, 123, 123, 77, decision)
 
     assert status == decision
     bot.delete_message.assert_awaited_once_with(123, 77)
@@ -89,13 +92,11 @@ async def test_expiry_deletes_message_and_restore_recreates_task() -> None:
             return_value=ConfirmationDecision(confirmation_id, "expired", 123, 77)
         ),
     )
-    service = ConfirmationService(bot, api)
+    service = ConfirmationService(cast(Any, bot), cast(Any, api))
     await service.restore()
     await asyncio.sleep(0.01)
 
-    api.decide_confirmation.assert_awaited_once_with(
-        confirmation_id, 123, "expired"
-    )
+    api.decide_confirmation.assert_awaited_once_with(confirmation_id, 123, "expired")
     bot.delete_message.assert_awaited_once_with(123, 77)
     bot.send_message.assert_awaited_once_with(
         123, "Время подтверждения истекло. Выход не выполнен"

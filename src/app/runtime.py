@@ -27,7 +27,5 @@ def build_runtime(settings: Settings) -> Runtime:
     )
     confirmations = ConfirmationService(bot, api)
     dispatcher = Dispatcher()
-    dispatcher.include_router(
-        build_router(LinkCodeService(bot, api), confirmations)
-    )
+    dispatcher.include_router(build_router(LinkCodeService(bot, api), confirmations))
     return Runtime(settings, bot, dispatcher, api, confirmations)

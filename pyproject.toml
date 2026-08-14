@@ -16,3 +16,11 @@ version = "0.1.0"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 asyncio_mode = "auto"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"
+include = ["run_polling.py", "run_webhook.py", "src", "tests"]
+exclude = [".venv"]
