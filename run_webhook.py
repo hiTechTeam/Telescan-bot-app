@@ -1,13 +1,9 @@
 import logging
-from src.app import app_webhook
 
-log = logging.getLogger(__name__)
+from src.app import app_webhook, build_runtime
+from src.config import Settings
 
 
 if __name__ == "__main__":
-    try:
-        app_webhook()
-    except KeyboardInterrupt:
-        log.warning("KeyboardInterrupt and stop polling")
-    except Exception as e:
-        log.error("Exception %s", e, exc_info=True)
+    logging.basicConfig(level=logging.INFO)
+    app_webhook(build_runtime(Settings()))

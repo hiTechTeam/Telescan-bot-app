@@ -1,18 +1,13 @@
-import logging
 import asyncio
-from src.app import app_polling
-from src.core.bots import bot
+import logging
 
-log = logging.getLogger(__name__)
-
-
-async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await app_polling()
+from src.app import app_polling, build_runtime
+from src.config import Settings
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     try:
-        asyncio.run(main())
+        asyncio.run(app_polling(build_runtime(Settings())))
     except KeyboardInterrupt:
-        log.warning("KeyboardInterrupt and stop polling")
+        pass

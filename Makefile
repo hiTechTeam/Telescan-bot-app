@@ -6,3 +6,6 @@ run_wh:
 
 bot-up:
 	docker compose up --build -d
+
+test:
+	uv run pytest

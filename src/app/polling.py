@@ -1,27 +1,18 @@
-# Polling for development
-
 import logging
-from src.core.bots import bot, dp
-from src.app.routers.users import router
-from src.core.log import conf_logging
-from beanie import init_beanie
-from src.core.db import mongo_client
-from src.core.db.models import User
-from src.core.conf import settings as s
 
-__all__ = ["app_polling"]
+from src.app.internal import start_internal_server
+from src.app.runtime import Runtime
 
 log = logging.getLogger(__name__)
 
 
-async def app_polling():
-    await init_beanie(
-        database=mongo_client[s.mongo_client_name],
-        document_models=[User],
-    )
-    conf_logging(level=logging.INFO)
-    dp.include_router(router)
+async def app_polling(runtime: Runtime) -> None:
+    runner = await start_internal_server(runtime)
     try:
-        await dp.start_polling(bot)
-    except Exception as e:
-        log.error(e)
+        await runtime.confirmations.restore()
+        await runtime.bot.delete_webhook(drop_pending_updates=True)
+        await runtime.dispatcher.start_polling(runtime.bot)
+    finally:
+        await runtime.confirmations.close()
+        await runner.cleanup()
+        await runtime.bot.session.close()

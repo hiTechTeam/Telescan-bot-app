@@ -1,0 +1,1 @@
+"""Telegram and HTTP adapters."""

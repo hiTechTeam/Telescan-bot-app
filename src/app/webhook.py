@@ -1,86 +1,43 @@
-import os
-import logging
-from beanie import init_beanie
-from aiogram import Bot  # noqa
-from aiohttp import web  # noqa
-from aiogram.webhook.aiohttp_server import (
-    SimpleRequestHandler,  # noqa
-    setup_application,  # noqa
-)
-from src.core.db.models import User
-from src.core.db import mongo_client
-from src.core.bots import dp, bot
-from src.app.routers import router
-from src.core.conf import settings as s
+from aiohttp import web
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+from src.app.internal import add_internal_routes
+from src.app.runtime import Runtime
 
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-LOCAL_WEBAPP_HOST = "0.0.0.0"
-LOCAL_WEBAPP_PORT = 8080
-WEBHOOK_PATH = "/bot/telescanbot/webhook/"
-WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
-WEBHOOK_BASE_URL = os.getenv("WEBHOOK_BASE_URL")
-
-
-log = logging.getLogger(__name__)
-
-
-async def on_bot_startup(bot: Bot) -> None:
-    me = await bot.get_me()
-    log.warning("Starting bot %s", me.username)
-
-    wh_info = await bot.get_webhook_info()
-    current_url = wh_info.url or ""
-
-    desired_url = f"{WEBHOOK_BASE_URL}{WEBHOOK_PATH}"
-
-    await init_beanie(
-        database=mongo_client[s.mongo_client_name],
-        document_models=[User],
-    )
-
-    if current_url != desired_url:
-        if current_url:
-            log.info("Deleting old webhook: %s", current_url)
-            await bot.delete_webhook(drop_pending_updates=False)
-
-        log.info("Setting new webhook: %s", desired_url)
-        await bot.set_webhook(
-            url=desired_url,
-            secret_token=WEBHOOK_SECRET_TOKEN,
-        )
-        wh_info = await bot.get_webhook_info()
-        log.info("Webhook successfully set: %s", wh_info)
-    else:
-        log.info("Webhook is already up-to-date: %s", current_url)
-
-
-def create_prepared_web_app() -> web.Application:
-    dp.include_router(router)
-    dp.startup.register(on_bot_startup)
-
-    app = web.Application()
-
-    aiogram_webhook_requests_handler = SimpleRequestHandler(
-        dispatcher=dp,
-        bot=bot,
-        secret_token=WEBHOOK_SECRET_TOKEN,
+def create_webhook_app(runtime: Runtime) -> web.Application:
+    settings = runtime.settings
+    if not settings.webhook_base_url or not settings.webhook_secret_token:
+        raise RuntimeError("Webhook settings are required")
+    app = web.Application(client_max_size=2 * 1024 * 1024)
+    add_internal_routes(app, runtime)
+    SimpleRequestHandler(
+        dispatcher=runtime.dispatcher,
+        bot=runtime.bot,
+        secret_token=settings.webhook_secret_token,
         handle_in_background=False,
-    )
-    aiogram_webhook_requests_handler.register(app, path=WEBHOOK_PATH)
-    setup_application(app, dp, bot=bot)
+    ).register(app, path=settings.webhook_path)
 
+    async def startup(_: web.Application) -> None:
+        await runtime.confirmations.restore()
+        await runtime.bot.set_webhook(
+            f"{settings.webhook_base_url.rstrip('/')}{settings.webhook_path}",
+            secret_token=settings.webhook_secret_token,
+        )
+
+    async def cleanup(_: web.Application) -> None:
+        await runtime.confirmations.close()
+        await runtime.bot.session.close()
+
+    app.on_startup.append(startup)
+    app.on_cleanup.append(cleanup)
+    setup_application(app, runtime.dispatcher, bot=runtime.bot)
     return app
 
 
-def app_webhook() -> None:
-    logging.basicConfig(level=logging.INFO)
-    app = create_prepared_web_app()
+def app_webhook(runtime: Runtime) -> None:
     web.run_app(
-        app,
-        host=LOCAL_WEBAPP_HOST,
-        port=LOCAL_WEBAPP_PORT,
+        create_webhook_app(runtime),
+        host=runtime.settings.internal_host,
+        port=runtime.settings.internal_port,
     )
