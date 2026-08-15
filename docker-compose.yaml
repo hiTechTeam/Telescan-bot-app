@@ -3,10 +3,25 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     expose:
       - '8080'
     env_file:
       - .env
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - --show-error
+        - --output
+        - /dev/null
+        - http://127.0.0.1:8080/health/live
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - telescan_network
 

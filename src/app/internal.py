@@ -7,6 +7,10 @@ from aiohttp import web
 from src.app.runtime import Runtime
 
 
+async def health(_: web.Request) -> web.Response:
+    return web.json_response({"status": "ok"})
+
+
 def add_internal_routes(app: web.Application, runtime: Runtime) -> None:
     async def notify(request: web.Request) -> web.Response:
         expected = f"Bearer {runtime.settings.bot_service_secret}"
@@ -27,6 +31,7 @@ def add_internal_routes(app: web.Application, runtime: Runtime) -> None:
         )
         return web.json_response({"accepted": True}, status=202)
 
+    app.router.add_get("/health/live", health)
     app.router.add_post("/internal/v1/confirmation-notifications", notify)
 
 

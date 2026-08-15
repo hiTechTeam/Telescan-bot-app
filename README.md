@@ -48,6 +48,12 @@ docker network create telescan_network
 make bot-up
 ```
 
+Compose injects runtime settings from the host `.env`; `.dockerignore` excludes
+that file, Git metadata, the local virtual environment, tests, and tool caches
+from image layers. The container restarts unless explicitly stopped and reports
+liveness at `GET /health/live` on its private internal port. Production deployment
+waits for the Docker health state to become `healthy`.
+
 ## Configuration
 
 | Variable | Purpose |
@@ -77,5 +83,5 @@ docker compose config --quiet
 ```
 
 The current automated tests cover API-only code issuance, Telegram photo-state
-synchronization, confirmation and cancellation messages, expiry cleanup, and
-restoration after restart.
+synchronization, confirmation and cancellation messages, expiry cleanup,
+restoration after restart, and the internal liveness endpoint.
