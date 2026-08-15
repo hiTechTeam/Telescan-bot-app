@@ -9,9 +9,12 @@ to the authenticated internal API owned by `Telescan-api`.
 - `/start`, `/code`, and `/update_code` read the user's current Telegram name,
   username, and first profile photo, then send them to
   `POST /internal/v1/link-codes` as multipart data.
+- The bot reports the photo as present, absent, or temporarily unchanged so the
+  API can remove an obsolete Telegram photo without erasing a valid photo when
+  Telegram download fails.
 - The clear one-time code returned by the API is shown once and is never logged
   or persisted by the bot.
-- A logout-all request from iOS is delivered to the bot's protected
+- A server-side logout-all request is delivered to the bot's protected
   `POST /internal/v1/confirmation-notifications` endpoint.
 - The bot sends Confirm and Cancel inline buttons, registers the Telegram
   message IDs in the API, and removes the buttons after a decision or expiry.
@@ -73,5 +76,6 @@ uv lock --check
 docker compose config --quiet
 ```
 
-The current automated tests cover API-only code issuance, confirmation and
-cancellation messages, expiry cleanup, and restoration after restart.
+The current automated tests cover API-only code issuance, Telegram photo-state
+synchronization, confirmation and cancellation messages, expiry cleanup, and
+restoration after restart.

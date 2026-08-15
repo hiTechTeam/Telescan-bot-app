@@ -40,9 +40,11 @@ class TelescanAPIClient:
         name: str | None,
         username: str | None,
         photo: bytes | None,
+        photo_state: str,
     ) -> IssuedCode:
         form = aiohttp.FormData()
         form.add_field("tg_id", str(telegram_id))
+        form.add_field("photo_state", photo_state)
         if name is not None:
             form.add_field("tg_name", name)
         if username is not None:

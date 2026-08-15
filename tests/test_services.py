@@ -38,8 +38,56 @@ async def test_link_code_service_uses_api_without_database() -> None:
 
     assert result.code == "ABCDEFGH"
     api.issue_link_code.assert_awaited_once_with(
-        123, "Ada", "ada", b"\xff\xd8\xffphoto"
+        123, "Ada", "ada", b"\xff\xd8\xffphoto", "present"
     )
+
+
+@pytest.mark.asyncio
+async def test_link_code_marks_missing_telegram_photo_as_absent() -> None:
+    bot = SimpleNamespace(
+        get_user_profile_photos=AsyncMock(
+            return_value=SimpleNamespace(total_count=0, photos=[])
+        ),
+        download=AsyncMock(),
+    )
+    api = SimpleNamespace(
+        issue_link_code=AsyncMock(
+            return_value=IssuedCode(
+                code="12345678",
+                expires_at=datetime.now(UTC),
+            )
+        )
+    )
+
+    await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(123, "Ada", "ada")
+
+    api.issue_link_code.assert_awaited_once_with(123, "Ada", "ada", None, "absent")
+    bot.download.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_code_preserves_photo_when_download_fails() -> None:
+    bot = SimpleNamespace(
+        get_user_profile_photos=AsyncMock(
+            return_value=SimpleNamespace(
+                total_count=1,
+                photos=[[SimpleNamespace(file_id="telegram-photo-id")]],
+            )
+        ),
+        download=AsyncMock(return_value=None),
+    )
+    api = SimpleNamespace(
+        issue_link_code=AsyncMock(
+            return_value=IssuedCode(
+                code="12345678",
+                expires_at=datetime.now(UTC),
+            )
+        )
+    )
+
+    await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(123, "Ada", "ada")
+
+    api.issue_link_code.assert_awaited_once_with(123, "Ada", "ada", None, "unchanged")
 
 
 @pytest.mark.asyncio
