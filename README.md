@@ -54,6 +54,11 @@ from image layers. The container restarts unless explicitly stopped and reports
 liveness at `GET /health/live` on its private internal port. Production deployment
 waits for the Docker health state to become `healthy`.
 
+The production process runs as the unprivileged `telescan` user. Compose uses a
+read-only root filesystem, a bounded `/tmp` tmpfs, no Linux capabilities, and
+`no-new-privileges`. The bot has no writable application directory and keeps no
+database or profile-photo credentials.
+
 ## Configuration
 
 | Variable | Purpose |
@@ -85,3 +90,10 @@ docker compose config --quiet
 The current automated tests cover API-only code issuance, Telegram photo-state
 synchronization, confirmation and cancellation messages, expiry cleanup,
 restoration after restart, and the internal liveness endpoint.
+
+## Repository workflow
+
+The protected `main` branch accepts changes through pull requests; force-pushes
+and deletion are disabled. Secret scanning with push protection, vulnerability
+alerts, and Dependabot security updates are enabled. A merge to `main` builds
+and deploys the container, then waits for the private liveness check.
