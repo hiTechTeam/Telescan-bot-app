@@ -79,9 +79,9 @@ not put MongoDB or S3 credentials in this service.
 ## Quality checks
 
 ```sh
-ruff check .
-ruff format --check .
-pyright
+uvx --from ruff==0.16.3 ruff check .
+uvx --from ruff==0.16.3 ruff format --check .
+uvx --from pyright==1.1.411 pyright
 uv run pytest
 uv lock --check
 docker compose config --quiet
@@ -93,7 +93,23 @@ restoration after restart, and the internal liveness endpoint.
 
 ## Repository workflow
 
-The protected `main` branch accepts changes through pull requests; force-pushes
-and deletion are disabled. Secret scanning with push protection, vulnerability
-alerts, and Dependabot security updates are enabled. A merge to `main` builds
-and deploys the container, then waits for the private liveness check.
+Pull requests and pushes to `main` run Ruff, Pyright, pytest, and a Docker
+build. A successful push to `main` deploys the polling-mode container and waits
+for the private liveness check. Production deployments are serialized per
+branch.
+
+This implementation repository is private. The current GitHub plan does not
+enforce branch protection/rulesets or provide secret scanning and push
+protection for private repositories, so pull-request review and the green
+`Validate and build` job are currently procedural merge gates. Dependabot
+vulnerability alerts and security updates are enabled. Do not force-push or
+delete `main`.
+
+Cross-service architecture, session flows, and production risks are maintained
+in the private
+[`Telescan-internal-docs`](https://github.com/hiTechTeam/Telescan-internal-docs)
+repository.
+
+## License
+
+Proprietary and confidential. See [LICENSE](LICENSE).
