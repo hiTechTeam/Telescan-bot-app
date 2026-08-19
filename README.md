@@ -98,13 +98,6 @@ build. A successful push to `main` deploys the polling-mode container and waits
 for the private liveness check. Production deployments are serialized per
 branch.
 
-This implementation repository is private. The current GitHub plan does not
-enforce branch protection/rulesets or provide secret scanning and push
-protection for private repositories, so pull-request review and the green
-`Validate and build` job are currently procedural merge gates. Dependabot
-vulnerability alerts and security updates are enabled. Do not force-push or
-delete `main`.
-
 Cross-service architecture, session flows, and production risks are maintained
 in the private
 [`Telescan-internal-docs`](https://github.com/hiTechTeam/Telescan-internal-docs)
