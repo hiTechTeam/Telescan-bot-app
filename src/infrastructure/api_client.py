@@ -4,7 +4,7 @@ from uuid import UUID
 
 import aiohttp
 
-from src.domain.errors import APIRejected, APIUnavailable
+from src.domain.errors import APIRejected, APIUnavailable, TelegramUsernameRequired
 from src.domain.models import ConfirmationDecision, IssuedCode, PendingConfirmation
 
 
@@ -27,6 +27,13 @@ class TelescanAPIClient:
                     method, f"{self._base_url}{path}", headers=headers, **kwargs
                 ) as response:
                     if response.status not in range(200, 300):
+                        if response.status == 422:
+                            try:
+                                payload = await response.json()
+                            except (aiohttp.ContentTypeError, ValueError):
+                                payload = {}
+                            if payload.get("code") == "telegram_username_required":
+                                raise TelegramUsernameRequired()
                         raise APIRejected(f"API status {response.status}")
                     if response.status == 204:
                         return None

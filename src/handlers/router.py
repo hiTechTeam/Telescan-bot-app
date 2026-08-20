@@ -4,7 +4,21 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
-from src.domain.errors import APIRejected, APIUnavailable
+from src.domain.errors import APIRejected, APIUnavailable, TelegramUsernameRequired
+
+
+def _username_required_message(language_code: str | None) -> str:
+    if (language_code or "").lower().startswith("ru"):
+        return (
+            "Для использования Telescan нужен публичный Telegram username.\n\n"
+            "Создайте его: Telegram → Настройки → Изменить → "
+            "Имя пользователя. Затем вернитесь сюда и снова нажмите /start."
+        )
+    return (
+        "Telescan requires a public Telegram username.\n\n"
+        "Create one in Telegram: Settings → Edit → Username. "
+        "Then return here and press /start again."
+    )
 
 
 def build_router(link_codes, confirmations) -> Router:
@@ -20,6 +34,11 @@ def build_router(link_codes, confirmations) -> Router:
                 message.from_user.first_name,
                 message.from_user.username,
             )
+        except TelegramUsernameRequired:
+            await message.answer(
+                _username_required_message(message.from_user.language_code)
+            )
+            return
         except APIUnavailable:
             await message.answer(
                 "Сервис Telescan временно недоступен. Попробуйте ещё раз позже."

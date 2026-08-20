@@ -9,6 +9,8 @@ to the authenticated internal API owned by `Telescan-api`.
 - `/start`, `/code`, and `/update_code` read the user's current Telegram name,
   username, and first profile photo, then send them to
   `POST /internal/v1/link-codes` as multipart data.
+- A public Telegram username is required. Without one, the bot explains where
+  to create it and does not request or display a link code.
 - The bot reports the photo as present, absent, or temporarily unchanged so the
   API can remove an obsolete Telegram photo without erasing a valid photo when
   Telegram download fails.

@@ -2,6 +2,7 @@ from typing import Protocol
 
 from aiogram import Bot
 
+from src.domain.errors import TelegramUsernameRequired
 from src.domain.models import IssuedCode
 
 
@@ -24,6 +25,9 @@ class LinkCodeService:
     async def issue(
         self, telegram_id: int, name: str | None, username: str | None
     ) -> IssuedCode:
+        normalized_username = (username or "").strip()
+        if not normalized_username:
+            raise TelegramUsernameRequired()
         photo: bytes | None = None
         photo_state = "absent"
         photos = await self._bot.get_user_profile_photos(telegram_id, limit=1)
@@ -37,7 +41,7 @@ class LinkCodeService:
         return await self._api.issue_link_code(
             telegram_id,
             name,
-            username,
+            normalized_username,
             photo,
             photo_state,
         )

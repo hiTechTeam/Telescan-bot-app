@@ -8,9 +8,65 @@ from uuid import uuid4
 
 import pytest
 
+from src.domain.errors import TelegramUsernameRequired
 from src.domain.models import ConfirmationDecision, IssuedCode, PendingConfirmation
+from src.handlers.router import build_router
 from src.services.confirmations import ConfirmationService
 from src.services.link_codes import LinkCodeService
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("username", [None, "", "   "])
+async def test_link_code_requires_public_telegram_username(
+    username: str | None,
+) -> None:
+    bot = SimpleNamespace(
+        get_user_profile_photos=AsyncMock(),
+        download=AsyncMock(),
+    )
+    api = SimpleNamespace(issue_link_code=AsyncMock())
+
+    with pytest.raises(TelegramUsernameRequired):
+        await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(
+            123, "Ada", username
+        )
+
+    bot.get_user_profile_photos.assert_not_awaited()
+    api.issue_link_code.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("language_code", "expected_fragments"),
+    [
+        ("ru", ("публичный Telegram username", "Настройки")),
+        ("en", ("public Telegram username", "Settings")),
+    ],
+)
+async def test_missing_username_message_explains_how_to_fix_it(
+    language_code: str,
+    expected_fragments: tuple[str, str],
+) -> None:
+    link_codes = SimpleNamespace(
+        issue=AsyncMock(side_effect=TelegramUsernameRequired())
+    )
+    message = SimpleNamespace(
+        from_user=SimpleNamespace(
+            id=123,
+            first_name="Ada",
+            username=None,
+            language_code=language_code,
+        ),
+        answer=AsyncMock(),
+    )
+    router = build_router(link_codes, SimpleNamespace())
+    handler = router.message.handlers[0].callback
+
+    await handler(message)
+
+    reply = message.answer.await_args.args[0]
+    assert all(fragment in reply for fragment in expected_fragments)
+    assert "/start" in reply
 
 
 @pytest.mark.asyncio
