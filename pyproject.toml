@@ -7,7 +7,7 @@ dependencies = [
   "pytest>=9.0.3",
   "pytest-asyncio>=1.2.0",
 ]
-description = "Add your description here"
+description = "Telegram profile linking and account service for Telescan"
 name = "telescan-bot-app"
 readme = "README.md"
 requires-python = ">=3.13"
