@@ -1,7 +1,7 @@
 # Telescan Bot
 
 Telegram presentation service for Telescan. The bot does not connect to
-MongoDB or S3 and does not generate or hash authentication codes. It talks only
+MongoDB or S3 and does not generate or hash Telegram linking codes. It talks only
 to the authenticated internal API owned by `Telescan-api`.
 
 ## User flows
@@ -14,8 +14,9 @@ to the authenticated internal API owned by `Telescan-api`.
 - The bot reports the photo as present, absent, or temporarily unchanged so the
   API can remove an obsolete Telegram photo without erasing a valid photo when
   Telegram download fails.
-- The clear one-time code returned by the API is shown once and is never logged
-  or persisted by the bot.
+- The clear one-time code returned by the API is explicitly presented as a way
+  to link Telegram to an already Apple-authenticated Telescan account. It is
+  shown once and is never logged or persisted by the bot.
 - A server-side logout-all request is delivered to the bot's protected
   `POST /internal/v1/confirmation-notifications` endpoint.
 - The bot sends Confirm and Cancel inline buttons, registers the Telegram
