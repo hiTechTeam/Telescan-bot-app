@@ -70,6 +70,40 @@ async def test_missing_username_message_explains_how_to_fix_it(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("language_code", "expected_fragment"),
+    [("ru", "привязать Telegram"), ("en", "link Telegram")],
+)
+async def test_code_message_describes_linking_not_authentication(
+    language_code: str,
+    expected_fragment: str,
+) -> None:
+    link_codes = SimpleNamespace(
+        issue=AsyncMock(
+            return_value=IssuedCode(
+                "ABCDEFGH", datetime.now(UTC) + timedelta(minutes=5)
+            )
+        )
+    )
+    message = SimpleNamespace(
+        from_user=SimpleNamespace(
+            id=123,
+            first_name="Ada",
+            username="ada",
+            language_code=language_code,
+        ),
+        answer=AsyncMock(),
+    )
+    router = build_router(link_codes, SimpleNamespace())
+
+    await router.message.handlers[0].callback(message)
+
+    reply = message.answer.await_args.args[0]
+    assert expected_fragment in reply
+    assert "ABCDEFGH" in reply
+
+
+@pytest.mark.asyncio
 async def test_link_code_service_uses_api_without_database() -> None:
     photo_id = "telegram-photo-id"
     bot = SimpleNamespace(
