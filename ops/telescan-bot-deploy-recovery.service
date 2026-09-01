@@ -6,5 +6,7 @@ ConditionPathExists=/home/ubuntu/telescan/.transactions/Telescan-bot-app/active.
 
 [Service]
 Type=oneshot
+User=ubuntu
+Group=ubuntu
 ExecStart=/home/ubuntu/telescan/.deploy-controller/Telescan-bot-app/recover-deployment.sh
 TimeoutStartSec=35min

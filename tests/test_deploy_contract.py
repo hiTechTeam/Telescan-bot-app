@@ -42,6 +42,8 @@ def test_systemd_supervises_deploy_and_boot_recovery_watcher() -> None:
     service = text("ops/telescan-bot-deploy-recovery.service")
 
     assert "sudo systemd-run --wait --collect" in workflow
+    assert "--uid=ubuntu" in workflow
+    assert "--gid=ubuntu" in workflow
     assert '--property="OnFailure=$RECOVERY_SERVICE"' in workflow
     assert 'systemctl enable --now "$RECOVERY_TIMER"' in workflow
     assert 'systemctl is-enabled --quiet "$RECOVERY_TIMER"' in workflow
@@ -50,6 +52,8 @@ def test_systemd_supervises_deploy_and_boot_recovery_watcher() -> None:
     assert "Persistent=true" in timer
     assert "WantedBy=timers.target" in timer
     assert "ConditionPathExists=" in service
+    assert "User=ubuntu" in service
+    assert "Group=ubuntu" in service
     assert "TimeoutStartSec=35min" in service
     assert_in_order(
         workflow,

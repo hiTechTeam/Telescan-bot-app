@@ -134,6 +134,8 @@ jobs:
 
           sudo systemd-run --wait --collect \
             --unit "telescan-bot-deploy-${{ github.run_id }}-${{ github.run_attempt }}" \
+            --uid=ubuntu \
+            --gid=ubuntu \
             --property=Type=oneshot \
             --property=TimeoutStartSec=35min \
             --property="OnFailure=$RECOVERY_SERVICE" \
