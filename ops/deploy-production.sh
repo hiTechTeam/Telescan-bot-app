@@ -60,7 +60,7 @@ healthy_container_id() {
     docker compose ps --quiet "$SERVICE" </dev/null
   )"
   global_ids="$(
-    docker ps --all --quiet \
+    docker ps --all --no-trunc --quiet \
       --filter "label=com.docker.compose.service=${SERVICE}"
   )"
   if [[ -z "$all_ids" || "$all_ids" == *$'\n'* ]]; then

@@ -76,6 +76,7 @@ def test_controller_has_one_durable_precommit_boundary_and_shared_lock() -> None
     assert "candidate-$deploy_id" in controller
     assert "docker compose ps --all --quiet" in controller
     assert "docker ps --all --quiet" in controller
+    assert "docker ps --all --no-trunc --quiet" in controller
     assert "\"$all_ids\" == *$'\\n'*" in controller
     assert '"$container_id" != "$global_ids"' in controller
     assert_in_order(
