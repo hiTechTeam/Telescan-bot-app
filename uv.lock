@@ -568,6 +568,10 @@ dependencies = [
     { name = "aiohttp" },
     { name = "aiohttp-socks" },
     { name = "pydantic-settings" },
+]
+
+[package.dev-dependencies]
+dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -578,6 +582,10 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.3" },
     { name = "aiohttp-socks", specifier = ">=0.11.0" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
 ]
