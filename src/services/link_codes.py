@@ -1,9 +1,14 @@
+import logging
 from typing import Protocol
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 
 from src.domain.errors import TelegramUsernameRequired
 from src.domain.models import IssuedCode
+
+
+logger = logging.getLogger(__name__)
 
 
 class LinkCodeAPI(Protocol):
@@ -30,14 +35,18 @@ class LinkCodeService:
             raise TelegramUsernameRequired()
         photo: bytes | None = None
         photo_state = "absent"
-        photos = await self._bot.get_user_profile_photos(telegram_id, limit=1)
-        if photos.total_count and photos.photos:
-            downloaded = await self._bot.download(photos.photos[0][-1].file_id)
-            if downloaded is not None:
-                photo = downloaded.read()
-                photo_state = "present"
-            else:
-                photo_state = "unchanged"
+        try:
+            photos = await self._bot.get_user_profile_photos(telegram_id, limit=1)
+            if photos.total_count and photos.photos:
+                downloaded = await self._bot.download(photos.photos[0][-1].file_id)
+                if downloaded is not None:
+                    photo = downloaded.read()
+                    photo_state = "present"
+                else:
+                    photo_state = "unchanged"
+        except (TelegramAPIError, OSError, TimeoutError):
+            logger.warning("Telegram profile photo is temporarily unavailable")
+            photo_state = "unchanged"
         return await self._api.issue_link_code(
             telegram_id,
             name,

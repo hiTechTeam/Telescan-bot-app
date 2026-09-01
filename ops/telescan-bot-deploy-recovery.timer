@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch for interrupted Telescan user-bot deployments
+
+[Timer]
+OnBootSec=15s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+Persistent=true
+Unit=telescan-bot-deploy-recovery.service
+
+[Install]
+WantedBy=timers.target

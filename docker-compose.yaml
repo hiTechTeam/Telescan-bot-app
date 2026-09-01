@@ -1,9 +1,13 @@
+name: telescan-bot-app
+
 services:
   telescan-bot-app:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    deploy:
+      replicas: 1
     expose:
       - '8080'
     env_file:

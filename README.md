@@ -75,9 +75,11 @@ database or profile-photo credentials.
 | `WEBHOOK_BASE_URL`, `WEBHOOK_PATH` | Public webhook URL and path |
 | `WEBHOOK_SECRET_TOKEN` | Telegram webhook verification secret |
 
-Production startup requires a bot token and rejects the built-in development
-service secret. Do not expose the notification endpoint through nginx, and do
-not put MongoDB or S3 credentials in this service.
+Production startup requires a syntactically valid, non-placeholder bot token,
+a distinct non-placeholder service secret, and the exact private API origin
+`http://telescan-api:8000` without credentials, path, query, or fragment. Do not
+expose the notification endpoint through nginx, and do not put MongoDB or S3
+credentials in this service.
 
 ## Quality checks
 
@@ -98,8 +100,26 @@ restoration after restart, and the internal liveness endpoint.
 
 Pull requests and pushes to `main` run Ruff, Pyright, pytest, and a Docker
 build. A successful push to `main` deploys the polling-mode container and waits
-for the private liveness check. Production deployments are serialized per
-branch.
+for the private liveness check. Uploads are finalized as root-owned, read-only
+immutable releases. A versioned host controller performs the transaction under
+the shared `/tmp/telescan-production-deploy.lock`, snapshots the complete active
+configuration except `.env`, and protects the previous image under a unique
+rollback tag. Release files, the snapshot, and their directory ancestry are
+fsynced before the controller publishes and fsyncs a durable `prepared` intent.
+
+The candidate is promoted only after that intent exists. Any failure before the
+fsynced `committed` transition restores both the snapshot and protected image,
+then requires exactly one restored container to be `healthy`. The intent is
+cleared only after a healthy rollback or committed candidate is verified. The
+deploy runs as a transient systemd service so an SSH disconnect cannot strand
+the shell, while an enabled persistent systemd timer dispatches recovery after
+a process crash or host reboot using the controller recorded by the immutable
+release. The installed launcher, systemd units, enable symlink, and their
+directories are fsynced and attested before a transaction may start. A corrupt
+or unrecoverable intent is retained and fails closed for an
+operator instead of starting another deployment. Only protected `main` can
+reach the production environment; workflow concurrency never cancels an active
+production transaction.
 
 Cross-service architecture, session flows, and production risks are maintained
 in the private

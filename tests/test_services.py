@@ -1,13 +1,16 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 
+from src.config import Settings
 from src.domain.errors import TelegramUsernameRequired
 from src.domain.models import ConfirmationDecision, IssuedCode, PendingConfirmation
 from src.handlers.router import build_router
@@ -181,6 +184,60 @@ async def test_link_code_preserves_photo_when_download_fails() -> None:
 
 
 @pytest.mark.asyncio
+async def test_link_code_preserves_photo_when_telegram_lookup_fails() -> None:
+    bot = SimpleNamespace(
+        get_user_profile_photos=AsyncMock(side_effect=OSError("unavailable")),
+        download=AsyncMock(),
+    )
+    api = SimpleNamespace(
+        issue_link_code=AsyncMock(
+            return_value=IssuedCode(
+                code="12345678",
+                expires_at=datetime.now(UTC),
+            )
+        )
+    )
+
+    await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(123, "Ada", "ada")
+
+    api.issue_link_code.assert_awaited_once_with(123, "Ada", "ada", None, "unchanged")
+    bot.download.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error"),
+    [
+        ("bot_token", "replace-token", "BOT_TOKEN"),
+        ("bot_token", "change-me-token", "BOT_TOKEN"),
+        ("bot_token", "not-a-telegram-token", "BOT_TOKEN"),
+        (
+            "bot_service_secret",
+            "replace-with-a-service-secret-value",
+            "BOT_SERVICE_SECRET",
+        ),
+        ("api_base_url", "https://api.tgtelescan.ru", "private Docker network"),
+        (
+            "api_base_url",
+            "http://telescan-api:8000?redirect=evil",
+            "private Docker network",
+        ),
+    ],
+)
+def test_production_rejects_placeholder_secrets_and_public_api_route(
+    field: str, value: str, error: str
+) -> None:
+    values: dict[str, object] = {
+        "environment": "production",
+        "bot_token": "123456:valid-looking-token",
+        "bot_service_secret": "s" * 32,
+    }
+    values[field] = value
+
+    with pytest.raises(ValidationError, match=error):
+        Settings.model_validate(values)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("decision", "message"),
     [
@@ -240,3 +297,18 @@ async def test_expiry_deletes_message_and_restore_recreates_task() -> None:
         123, "Время подтверждения истекло. Выход не выполнен"
     )
     await service.close()
+
+
+def test_deploy_dispatches_durable_locked_controller_with_rollback() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    workflow = (repository / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
+    controller = (repository / "ops/deploy-production.sh").read_text(encoding="utf-8")
+
+    assert ".releases/Telescan-bot-app/" in workflow
+    assert "sudo systemd-run --wait --collect" in workflow
+    main = controller[controller.index("main() {") :]
+    assert main.index("flock -w 1800 9") < main.index('deploy_release "$2" "$3"')
+    assert '"$snapshot_dir/" "$ACTIVE_DIR/"' in controller
+    assert "protected previous release did not recover healthy" in controller
+    assert "intent phase --expected prepared --new committed" in controller
+    assert '"$container_id" != "$global_ids"' in controller

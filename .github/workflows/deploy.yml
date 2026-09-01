@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: telescan-bot-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: production-telescan-bot
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -50,10 +50,10 @@ jobs:
 
   deploy:
     name: Deploy to production
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     environment: production
     steps:
       - name: Checkout
@@ -74,15 +74,28 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          TARGET_DIR=/home/ubuntu/telescan/Telescan-bot-app
+          RELEASE_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          RELEASES_DIR=/home/ubuntu/telescan/.releases/Telescan-bot-app
+          TARGET_DIR=$RELEASES_DIR/$RELEASE_ID
+          UPLOAD_DIR="$(ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            "set -Eeuo pipefail; install -d -m 0755 '$RELEASES_DIR'; test ! -e '$TARGET_DIR'; mktemp -d '$RELEASES_DIR/.upload-$RELEASE_ID.XXXXXX'")"
 
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
-            "$SERVER_USER@$SERVER_HOST" "mkdir -p '$TARGET_DIR'"
+          cleanup_upload() {
+            ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
+              "$SERVER_USER@$SERVER_HOST" \
+              "test ! -d '$UPLOAD_DIR' || rm -rf -- '$UPLOAD_DIR'" || true
+          }
+          trap cleanup_upload EXIT
           rsync -az --delete \
             --exclude '.env' \
             --exclude '.git' \
             -e 'ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes' \
-            ./ "$SERVER_USER@$SERVER_HOST:$TARGET_DIR/"
+            ./ "$SERVER_USER@$SERVER_HOST:$UPLOAD_DIR/"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            "set -Eeuo pipefail; test -d '$UPLOAD_DIR'; test ! -e '$TARGET_DIR'; test -z \"\$(find '$UPLOAD_DIR' -type l -print -quit)\"; find '$UPLOAD_DIR' -type f -exec chmod 0444 {} +; find '$UPLOAD_DIR' -type d -exec chmod 0555 {} +; chmod 0555 '$UPLOAD_DIR/ops/deploy-production.sh' '$UPLOAD_DIR/ops/recover-deployment.sh'; sudo chown -R root:root '$UPLOAD_DIR'; sudo /usr/bin/python3 '$UPLOAD_DIR/ops/fsync_paths.py' tree '$UPLOAD_DIR'; mv '$UPLOAD_DIR' '$TARGET_DIR'; sudo /usr/bin/python3 '$TARGET_DIR/ops/fsync_paths.py' parents '$RELEASES_DIR'"
+          trap - EXIT
 
       - name: Deploy bot
         env:
@@ -91,21 +104,39 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$SERVER_USER@$SERVER_HOST" <<'REMOTE'
           set -Eeuo pipefail
-          cd /home/ubuntu/telescan/Telescan-bot-app
-          test -s .env
-          docker compose config --quiet
-          docker compose up -d --build --no-deps telescan-bot-app
+          DEPLOY_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          RELEASE_DIR=/home/ubuntu/telescan/.releases/Telescan-bot-app/${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          CONTROLLER_DIR=/home/ubuntu/telescan/.deploy-controller/Telescan-bot-app
+          INTENT_FILE=/home/ubuntu/telescan/.transactions/Telescan-bot-app/active.json
+          RECOVERY_SERVICE=telescan-bot-deploy-recovery.service
+          RECOVERY_TIMER=telescan-bot-deploy-recovery.timer
 
-          CONTAINER_ID="$(docker compose ps -q telescan-bot-app)"
-          test -n "$CONTAINER_ID"
-          for attempt in {1..20}; do
-            HEALTH_STATUS="$(docker inspect --format '{{.State.Health.Status}}' "$CONTAINER_ID")"
-            if [ "$HEALTH_STATUS" = "healthy" ]; then
-              break
-            fi
-            sleep 5
-          done
+          if sudo systemctl cat "$RECOVERY_SERVICE" >/dev/null 2>&1; then
+            sudo systemctl start "$RECOVERY_SERVICE"
+          fi
+          test ! -e "$INTENT_FILE"
+          sudo install -d -m 0755 "$CONTROLLER_DIR"
+          sudo install -o root -g root -m 0755 \
+            "$RELEASE_DIR/ops/recover-deployment.sh" \
+            "$CONTROLLER_DIR/recover-deployment.sh"
+          sudo install -o root -g root -m 0644 \
+            "$RELEASE_DIR/ops/$RECOVERY_SERVICE" \
+            "/etc/systemd/system/$RECOVERY_SERVICE"
+          sudo install -o root -g root -m 0644 \
+            "$RELEASE_DIR/ops/$RECOVERY_TIMER" \
+            "/etc/systemd/system/$RECOVERY_TIMER"
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now "$RECOVERY_TIMER"
+          sudo /usr/bin/python3 \
+            "$RELEASE_DIR/ops/fsync_recovery_install.py"
+          sudo systemctl is-enabled --quiet "$RECOVERY_TIMER"
+          sudo systemctl is-active --quiet "$RECOVERY_TIMER"
 
-          docker compose ps telescan-bot-app
-          test "$(docker inspect --format '{{.State.Health.Status}}' "$CONTAINER_ID")" = "healthy"
+          sudo systemd-run --wait --collect \
+            --unit "telescan-bot-deploy-${{ github.run_id }}-${{ github.run_attempt }}" \
+            --property=Type=oneshot \
+            --property=TimeoutStartSec=35min \
+            --property="OnFailure=$RECOVERY_SERVICE" \
+            "$RELEASE_DIR/ops/deploy-production.sh" \
+            deploy "$RELEASE_DIR" "$DEPLOY_ID"
           REMOTE
