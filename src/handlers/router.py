@@ -21,17 +21,19 @@ def _username_required_message(language_code: str | None) -> str:
     )
 
 
-def _link_code_message(language_code: str | None, code: str) -> str:
+def _link_code_message(language_code: str | None) -> str:
     if (language_code or "").lower().startswith("ru"):
         return (
             "Введите этот одноразовый код в Telescan, чтобы привязать "
-            "Telegram к вашему аккаунту. Код действует несколько минут:\n\n"
-            f"<b><code>{code}</code></b>"
+            "Telegram к вашему аккаунту. Код действует несколько минут.\n\n"
+            "Код придёт следующим сообщением — нажмите на него или "
+            "удерживайте, чтобы скопировать."
         )
     return (
         "Enter this one-time code in Telescan to link Telegram to your "
-        "account. The code is valid for a few minutes:\n\n"
-        f"<b><code>{code}</code></b>"
+        "account. The code is valid for a few minutes.\n\n"
+        "The code will arrive in the next message. Tap or press and hold "
+        "it to copy."
     )
 
 
@@ -63,9 +65,8 @@ def build_router(link_codes, confirmations) -> Router:
                 "Не удалось выпустить код. Подождите немного и повторите команду."
             )
             return
-        await message.answer(
-            _link_code_message(message.from_user.language_code, issued.code)
-        )
+        await message.answer(_link_code_message(message.from_user.language_code))
+        await message.answer(f"<code>{issued.code}</code>")
 
     async def handle_callback(callback: CallbackQuery, decision: str) -> None:
         if callback.from_user is None or callback.message is None or not callback.data:

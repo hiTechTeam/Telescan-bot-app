@@ -16,7 +16,8 @@ to the authenticated internal API owned by `Telescan-api`.
   Telegram download fails.
 - The clear one-time code returned by the API is explicitly presented as a way
   to link Telegram to an already Apple-authenticated Telescan account. It is
-  shown once and is never logged or persisted by the bot.
+  shown once in a separate copy-friendly Telegram message and is never logged
+  or persisted by the bot.
 - A server-side logout-all request is delivered to the bot's protected
   `POST /internal/v1/confirmation-notifications` endpoint.
 - The bot sends Confirm and Cancel inline buttons, registers the Telegram

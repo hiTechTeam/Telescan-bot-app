@@ -101,9 +101,12 @@ async def test_code_message_describes_linking_not_authentication(
 
     await router.message.handlers[0].callback(message)
 
-    reply = message.answer.await_args.args[0]
-    assert expected_fragment in reply
-    assert "ABCDEFGH" in reply
+    assert message.answer.await_count == 2
+    explanation = message.answer.await_args_list[0].args[0]
+    code = message.answer.await_args_list[1].args[0]
+    assert expected_fragment in explanation
+    assert "ABCDEFGH" not in explanation
+    assert code == "<code>ABCDEFGH</code>"
 
 
 @pytest.mark.asyncio
