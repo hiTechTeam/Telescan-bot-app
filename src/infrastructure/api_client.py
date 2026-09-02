@@ -4,7 +4,12 @@ from uuid import UUID
 
 import aiohttp
 
-from src.domain.errors import APIRejected, APIUnavailable, TelegramUsernameRequired
+from src.domain.errors import (
+    APIRejected,
+    APIUnavailable,
+    PublicContentRejected,
+    TelegramUsernameRequired,
+)
 from src.domain.models import ConfirmationDecision, IssuedCode, PendingConfirmation
 
 
@@ -34,6 +39,8 @@ class TelescanAPIClient:
                                 payload = {}
                             if payload.get("code") == "telegram_username_required":
                                 raise TelegramUsernameRequired()
+                            if payload.get("code") == "public_content_rejected":
+                                raise PublicContentRejected()
                         raise APIRejected(f"API status {response.status}")
                     if response.status == 204:
                         return None

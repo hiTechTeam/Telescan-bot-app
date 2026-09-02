@@ -4,7 +4,12 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
-from src.domain.errors import APIRejected, APIUnavailable, TelegramUsernameRequired
+from src.domain.errors import (
+    APIRejected,
+    APIUnavailable,
+    PublicContentRejected,
+    TelegramUsernameRequired,
+)
 
 
 def _username_required_message(language_code: str | None) -> str:
@@ -37,6 +42,18 @@ def _link_code_message(language_code: str | None) -> str:
     )
 
 
+def _public_content_rejected_message(language_code: str | None) -> str:
+    if (language_code or "").lower().startswith("ru"):
+        return (
+            "Имя или username Telegram не проходит правила публичного профиля "
+            "Telescan. Измените его в Telegram и снова нажмите /start."
+        )
+    return (
+        "Your Telegram name or username does not meet Telescan public-profile "
+        "rules. Change it in Telegram and press /start again."
+    )
+
+
 def build_router(link_codes, confirmations) -> Router:
     router = Router(name="telescan")
 
@@ -53,6 +70,11 @@ def build_router(link_codes, confirmations) -> Router:
         except TelegramUsernameRequired:
             await message.answer(
                 _username_required_message(message.from_user.language_code)
+            )
+            return
+        except PublicContentRejected:
+            await message.answer(
+                _public_content_rejected_message(message.from_user.language_code)
             )
             return
         except APIUnavailable:

@@ -8,3 +8,7 @@ class APIRejected(Exception):
 
 class TelegramUsernameRequired(Exception):
     pass
+
+
+class PublicContentRejected(Exception):
+    pass

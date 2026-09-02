@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.config import Settings
-from src.domain.errors import TelegramUsernameRequired
+from src.domain.errors import PublicContentRejected, TelegramUsernameRequired
 from src.domain.models import ConfirmationDecision, IssuedCode, PendingConfirmation
 from src.handlers.router import build_router
 from src.services.confirmations import ConfirmationService
@@ -69,6 +69,34 @@ async def test_missing_username_message_explains_how_to_fix_it(
 
     reply = message.answer.await_args.args[0]
     assert all(fragment in reply for fragment in expected_fragments)
+    assert "/start" in reply
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("language_code", "expected_fragment"),
+    [("ru", "правила публичного профиля"), ("en", "public-profile rules")],
+)
+async def test_rejected_public_profile_explains_how_to_fix_it(
+    language_code: str,
+    expected_fragment: str,
+) -> None:
+    link_codes = SimpleNamespace(issue=AsyncMock(side_effect=PublicContentRejected()))
+    message = SimpleNamespace(
+        from_user=SimpleNamespace(
+            id=123,
+            first_name="Ada",
+            username="ada",
+            language_code=language_code,
+        ),
+        answer=AsyncMock(),
+    )
+    router = build_router(link_codes, SimpleNamespace())
+
+    await router.message.handlers[0].callback(message)
+
+    reply = message.answer.await_args.args[0]
+    assert expected_fragment in reply
     assert "/start" in reply
 
 
