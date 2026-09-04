@@ -16,6 +16,7 @@ class Runtime:
     dispatcher: Dispatcher
     api: TelescanAPIClient
     confirmations: ConfirmationService
+    link_codes: LinkCodeService
 
 
 def build_runtime(settings: Settings) -> Runtime:
@@ -26,6 +27,7 @@ def build_runtime(settings: Settings) -> Runtime:
         settings.api_timeout_seconds,
     )
     confirmations = ConfirmationService(bot, api)
+    link_codes = LinkCodeService(bot, api)
     dispatcher = Dispatcher()
-    dispatcher.include_router(build_router(LinkCodeService(bot, api), confirmations))
-    return Runtime(settings, bot, dispatcher, api, confirmations)
+    dispatcher.include_router(build_router(link_codes, confirmations))
+    return Runtime(settings, bot, dispatcher, api, confirmations, link_codes)

@@ -6,14 +6,14 @@ to the authenticated internal API owned by `Telescan-api`.
 
 ## User flows
 
-- `/start`, `/code`, and `/update_code` read the user's current Telegram name,
-  username, and first profile photo, then send them to
-  `POST /internal/v1/link-codes` as multipart data.
+- `/start`, `/code`, and `/update_code` send the user's current Telegram name and
+  username to `POST /internal/v1/link-codes`, return the code immediately, and
+  synchronize the first profile photo through a separate background API call.
 - A public Telegram username is required. Without one, the bot explains where
   to create it and does not request or display a link code.
-- The bot reports the photo as present, absent, or temporarily unchanged so the
-  API can remove an obsolete Telegram photo without erasing a valid photo when
-  Telegram download fails.
+- The background sync reports the photo as present, absent, or temporarily
+  unchanged so the API can remove an obsolete Telegram photo without erasing a
+  valid photo when Telegram download fails.
 - The clear one-time code returned by the API is explicitly presented as a way
   to link Telegram to an already Apple-authenticated Telescan account. It is
   shown once in a separate copy-friendly Telegram message and is never logged

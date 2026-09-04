@@ -13,6 +13,7 @@ async def app_polling(runtime: Runtime) -> None:
         await runtime.bot.delete_webhook(drop_pending_updates=True)
         await runtime.dispatcher.start_polling(runtime.bot)
     finally:
+        await runtime.link_codes.close()
         await runtime.confirmations.close()
         await runner.cleanup()
         await runtime.bot.session.close()

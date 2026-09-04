@@ -28,6 +28,7 @@ def create_webhook_app(runtime: Runtime) -> web.Application:
         )
 
     async def cleanup(_: web.Application) -> None:
+        await runtime.link_codes.close()
         await runtime.confirmations.close()
         await runtime.bot.session.close()
 

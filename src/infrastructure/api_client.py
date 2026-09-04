@@ -56,7 +56,7 @@ class TelescanAPIClient:
         photo: bytes | None,
         photo_state: str,
     ) -> IssuedCode:
-        form = aiohttp.FormData()
+        form = aiohttp.FormData(default_to_multipart=True)
         form.add_field("tg_id", str(telegram_id))
         form.add_field("photo_state", photo_state)
         if name is not None:
@@ -76,6 +76,27 @@ class TelescanAPIClient:
         return IssuedCode(
             code=payload["code"],
             expires_at=_datetime(payload["expiresAt"]),
+        )
+
+    async def sync_telegram_profile_photo(
+        self,
+        telegram_id: int,
+        photo: bytes | None,
+        photo_state: str,
+    ) -> None:
+        form = aiohttp.FormData(default_to_multipart=True)
+        form.add_field("photo_state", photo_state)
+        if photo is not None:
+            form.add_field(
+                "photo",
+                photo,
+                filename="telegram-profile.jpg",
+                content_type="image/jpeg",
+            )
+        await self._request(
+            "PUT",
+            f"/internal/v1/telegram-profiles/{telegram_id}/photo",
+            data=form,
         )
 
     async def register_confirmation_message(
