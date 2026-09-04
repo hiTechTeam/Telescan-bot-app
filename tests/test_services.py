@@ -212,6 +212,41 @@ async def test_link_code_preserves_photo_when_download_fails() -> None:
     await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(123, "Ada", "ada")
 
     api.issue_link_code.assert_awaited_once_with(123, "Ada", "ada", None, "unchanged")
+    assert bot.get_user_profile_photos.await_count == 3
+    assert bot.download.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_link_code_retries_a_transient_telegram_photo_failure() -> None:
+    photo_id = "telegram-photo-id"
+    bot = SimpleNamespace(
+        get_user_profile_photos=AsyncMock(
+            side_effect=[
+                OSError("temporarily unavailable"),
+                SimpleNamespace(
+                    total_count=1,
+                    photos=[[SimpleNamespace(file_id=photo_id)]],
+                ),
+            ]
+        ),
+        download=AsyncMock(return_value=BytesIO(b"\xff\xd8\xffphoto")),
+    )
+    api = SimpleNamespace(
+        issue_link_code=AsyncMock(
+            return_value=IssuedCode(
+                code="12345678",
+                expires_at=datetime.now(UTC),
+            )
+        )
+    )
+
+    await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(123, "Ada", "ada")
+
+    assert bot.get_user_profile_photos.await_count == 2
+    bot.download.assert_awaited_once_with(photo_id)
+    api.issue_link_code.assert_awaited_once_with(
+        123, "Ada", "ada", b"\xff\xd8\xffphoto", "present"
+    )
 
 
 @pytest.mark.asyncio
@@ -232,6 +267,7 @@ async def test_link_code_preserves_photo_when_telegram_lookup_fails() -> None:
     await LinkCodeService(cast(Any, bot), cast(Any, api)).issue(123, "Ada", "ada")
 
     api.issue_link_code.assert_awaited_once_with(123, "Ada", "ada", None, "unchanged")
+    assert bot.get_user_profile_photos.await_count == 3
     bot.download.assert_not_awaited()
 
 

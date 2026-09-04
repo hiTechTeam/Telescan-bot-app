@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Protocol
 
@@ -9,6 +10,10 @@ from src.domain.models import IssuedCode
 
 
 logger = logging.getLogger(__name__)
+
+PHOTO_FETCH_ATTEMPTS = 3
+PHOTO_FETCH_TIMEOUT_SECONDS = 15
+PHOTO_RETRY_DELAYS_SECONDS = (0.25, 0.75)
 
 
 class LinkCodeAPI(Protocol):
@@ -33,20 +38,7 @@ class LinkCodeService:
         normalized_username = (username or "").strip()
         if not normalized_username:
             raise TelegramUsernameRequired()
-        photo: bytes | None = None
-        photo_state = "absent"
-        try:
-            photos = await self._bot.get_user_profile_photos(telegram_id, limit=1)
-            if photos.total_count and photos.photos:
-                downloaded = await self._bot.download(photos.photos[0][-1].file_id)
-                if downloaded is not None:
-                    photo = downloaded.read()
-                    photo_state = "present"
-                else:
-                    photo_state = "unchanged"
-        except (TelegramAPIError, OSError, TimeoutError):
-            logger.warning("Telegram profile photo is temporarily unavailable")
-            photo_state = "unchanged"
+        photo, photo_state = await self._load_profile_photo(telegram_id)
         return await self._api.issue_link_code(
             telegram_id,
             name,
@@ -54,3 +46,35 @@ class LinkCodeService:
             photo,
             photo_state,
         )
+
+    async def _load_profile_photo(self, telegram_id: int) -> tuple[bytes | None, str]:
+        for attempt in range(PHOTO_FETCH_ATTEMPTS):
+            try:
+                async with asyncio.timeout(PHOTO_FETCH_TIMEOUT_SECONDS):
+                    photos = await self._bot.get_user_profile_photos(
+                        telegram_id,
+                        limit=1,
+                    )
+                    if not photos.total_count or not photos.photos:
+                        return None, "absent"
+
+                    downloaded = await self._bot.download(photos.photos[0][-1].file_id)
+                    if downloaded is None:
+                        raise OSError("Telegram returned no profile photo data")
+
+                    photo = downloaded.read()
+                    if not photo:
+                        raise OSError("Telegram returned an empty profile photo")
+                    return photo, "present"
+            except (TelegramAPIError, OSError, TimeoutError) as error:
+                if attempt == PHOTO_FETCH_ATTEMPTS - 1:
+                    logger.warning(
+                        "Telegram profile photo is temporarily unavailable after %s "
+                        "attempts (%s)",
+                        PHOTO_FETCH_ATTEMPTS,
+                        type(error).__name__,
+                    )
+                    return None, "unchanged"
+                await asyncio.sleep(PHOTO_RETRY_DELAYS_SECONDS[attempt])
+
+        return None, "unchanged"
