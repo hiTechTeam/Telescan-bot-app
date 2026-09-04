@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 PHOTO_FETCH_ATTEMPTS = 3
 PHOTO_LOOKUP_TIMEOUT_SECONDS = 15
-PHOTO_DOWNLOAD_TIMEOUT_SECONDS = 10
+PHOTO_DOWNLOAD_TIMEOUT_SECONDS = 2
 PHOTO_RETRY_DELAYS_SECONDS = (0.25, 0.75)
 PHOTO_SYNC_ATTEMPTS = 3
 PHOTO_SYNC_RETRY_DELAYS_SECONDS = (0.25, 0.75)
@@ -108,12 +108,21 @@ class LinkCodeService:
                     if not sizes:
                         raise OSError("Telegram returned an empty profile photo set")
 
-                # Telegram orders sizes from smallest to largest. Prefer the
-                # maximum avatar, but let one problematic file fall back to
-                # the next size instead of losing the photo altogether.
+                # Prefer the maximum avatar, but let one problematic file
+                # fall back to the next size instead of losing the photo.
+                # The explicit dimensions keep the order safe even if
+                # Telegram changes the ordering of the returned array.
+                ordered_sizes = sorted(
+                    reversed(sizes),
+                    key=lambda size: (
+                        getattr(size, "width", 0) * getattr(size, "height", 0),
+                        getattr(size, "file_size", 0) or 0,
+                    ),
+                    reverse=True,
+                )
                 stage = "download"
                 last_download_error: Exception | None = None
-                for size in reversed(sizes):
+                for size in ordered_sizes:
                     try:
                         async with asyncio.timeout(PHOTO_DOWNLOAD_TIMEOUT_SECONDS):
                             downloaded = await self._bot.download(size.file_id)
